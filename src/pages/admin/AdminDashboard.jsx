@@ -468,7 +468,13 @@ const AdminDashboard = () => {
 
     // Logic must match the render filter
     const selectedCourseObj = courses.find(c => c.name === attendanceForm.course);
-    const targetBatches = selectedCourseObj ? (selectedCourseObj.batches || []) : [];
+    // Updated: Batches are now populated objects, need to map to names or IDs. 
+    // Students typically store batch IDs or populated batch objects. 
+    // Let's assume student.batch.name is available or student.batch is Name (legacy).
+    // The safest is to compare Names if possible, or IDs.
+    // Course batches: [{_id, name, ...}]
+
+    const targetBatches = selectedCourseObj ? (selectedCourseObj.batches || []).map(b => b.name || b) : [];
 
     // Filter students belonging to ANY of the target batches
     const currentViewStudents = students.filter(s => {
@@ -533,8 +539,8 @@ const AdminDashboard = () => {
           columns={[
             { header: 'Code', accessor: 'code' },
             { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
-            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : row.dept, className: 'whitespace-normal' },
-            { header: 'Batches', accessor: (row) => Array.isArray(row.batches) ? row.batches.join(', ') : '-' },
+            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.map(d => d.name || d).join(', ') : (row.dept?.name || row.dept), className: 'whitespace-normal' },
+            { header: 'Batches', accessor: (row) => Array.isArray(row.batches) ? row.batches.map(b => b.name || b).join(', ') : '-' },
             { header: 'Credits', accessor: 'credits' }
           ]}
           onOpenModal={handleOpenModal}
