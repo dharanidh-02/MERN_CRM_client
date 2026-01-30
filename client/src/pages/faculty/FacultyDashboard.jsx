@@ -41,12 +41,23 @@ const FacultyDashboard = () => {
 
         const facultyDeptId = currentFaculty.dept?._id || currentFaculty.dept;
 
-        // Load all data
-        const [studentsRes, coursesRes, examsRes] = await Promise.all([
-          API.fetchStudents(),
-          API.fetchCourses(),
-          API.fetchExams()
-        ]);
+        // Load data independently to prevent one failure from blocking others
+        let studentsRes = { data: [] };
+        let coursesRes = { data: [] };
+        let examsRes = { data: [] };
+
+        try {
+          studentsRes = await API.fetchStudents();
+        } catch (e) { console.error("Failed to fetch students", e); }
+
+        try {
+          coursesRes = await API.fetchCourses();
+        } catch (e) { console.error("Failed to fetch courses", e); }
+
+        try {
+          // This might fail if Schema changed and DB has old data
+          examsRes = await API.fetchExams();
+        } catch (e) { console.error("Failed to fetch exams", e); }
 
         // Get Batches for ALL assigned courses
         // Create a Set of valid batches derived from the assigned courses
