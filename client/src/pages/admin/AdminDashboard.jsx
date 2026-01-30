@@ -537,39 +537,37 @@ const AdminDashboard = () => {
           activeSection="course"
           data={courses}
           columns={[
-            columns = {
-              [
-              { header: 'Code', accessor: 'code' },
-              { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
-              {
-                header: 'Dept',
-                accessor: (row) => {
-                  const getDeptName = (d) => {
-                    if (d && d.name) return d.name; // Populated
-                    const found = departments.find(dep => dep._id === d);
-                    return found ? found.name : d; // Lookup or ID
-                  };
-                  return Array.isArray(row.dept) ? row.dept.map(getDeptName).join(', ') : getDeptName(row.dept);
-                },
-                className: 'whitespace-normal'
+            { header: 'Code', accessor: 'code' },
+            { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
+            {
+              header: 'Dept',
+              accessor: (row) => {
+                const getDeptName = (d) => {
+                  if (d && d.name) return d.name; // Populated
+                  const found = departments.find(dep => dep._id === d);
+                  return found ? found.name : d; // Lookup or ID
+                };
+                return Array.isArray(row.dept) ? row.dept.map(getDeptName).join(', ') : getDeptName(row.dept);
               },
-              {
-                header: 'Batches',
-                accessor: (row) => {
-                  const getBatchName = (b) => {
-                    if (b && b.name) return b.name;
-                    const found = batches.find(bat => bat._id === b);
-                    return found ? found.name : b;
-                  };
-                  return Array.isArray(row.batches) ? row.batches.map(getBatchName).join(', ') : '-';
-                }
-              },
-              { header: 'Credits', accessor: 'credits' }
-              ]}
-          onOpenModal = { handleOpenModal }
-          onDelete = { handleDelete }
-          onEdit = { handleEdit }
-            />;
+              className: 'whitespace-normal'
+            },
+            {
+              header: 'Batches',
+              accessor: (row) => {
+                const getBatchName = (b) => {
+                  if (b && b.name) return b.name;
+                  const found = batches.find(bat => bat._id === b);
+                  return found ? found.name : b;
+                };
+                return Array.isArray(row.batches) ? row.batches.map(getBatchName).join(', ') : '-';
+              }
+            },
+            { header: 'Credits', accessor: 'credits' }
+          ]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'batch':
         return <AdminManagement
           activeSection="batch"
