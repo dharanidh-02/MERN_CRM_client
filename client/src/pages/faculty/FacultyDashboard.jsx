@@ -64,14 +64,53 @@ const FacultyDashboard = () => {
         });
 
         // Filter students belonging to this faculty's department AND one of the valid batches
-        const facultyStudents = studentsRes.data.filter(s => {
-          const sDeptId = s.dept?._id || s.dept;
-          const sBatchName = s.batch?.name || s.batch;
+        // Helper for ID matching
+        const areIdsEqual = (id1, id2) => {
+          if (!id1 || !id2) return false;
+          const str1 = (id1._id || id1).toString();
+          const str2 = (id2._id || id2).toString();
+          return str1 === str2;
+        };
 
-          const deptMatch = (sDeptId === facultyDeptId);
-          // Check if student's batch is in our set of valid batches
-          // NOTE: 'validBatches' contains Strings (Batch Names). Ensure sBatchName is the Name.
-          const batchMatch = validBatches.has(sBatchName);
+        // Filter students belonging to this faculty's department AND one of the valid batches
+        const facultyStudents = studentsRes.data.filter(s => {
+          // Robust Dept Match
+          const sDept = s.dept;
+          const fDept = currentFaculty.dept;
+          const deptMatch = areIdsEqual(sDept, fDept);
+
+          // Robust Batch Match
+          // validBatches contains Batch Names (Strings).
+          // Student batch might be Name, ID, or Object.
+          // We need to match against Batch Names because that's what we extracted from Courses.
+
+          let sBatchName = '';
+          if (s.batch && s.batch.name) {
+            sBatchName = s.batch.name;
+          } else if (s.batch) {
+            // If s.batch is an ID string, we need to find the Name from fetched batches (not available here easily?)
+            // Wait, validBatches came from `coursesRes`.
+            // Ideally we should match IDs.
+            // Let's rebuild validBatches to store IDs if possible.
+            sBatchName = s.batch; // fallback
+          }
+
+          // RE-STRATEGY: Match by ID if possible.
+          // validBatchesSet should contain IDs.
+          const sBatchId = s.batch?._id || s.batch;
+
+          // Let's re-collect valid batch IDs
+          const validBatchIds = new Set();
+          facultyCourses.forEach(facCourse => {
+            const cId = facCourse._id || facCourse;
+            const fullCourse = coursesRes.data.find(c => c._id === cId || c.name === facCourse.name); // Handle name match too
+            if (fullCourse && fullCourse.batches) {
+              fullCourse.batches.forEach(b => validBatchIds.add(b._id || b));
+            }
+          });
+
+          // Check if student batch ID is in the set
+          const batchMatch = Array.from(validBatchIds).some(bId => areIdsEqual(bId, sBatchId));
 
           return deptMatch && batchMatch;
         });

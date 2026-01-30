@@ -38,21 +38,30 @@ const FacultyAttendance = ({ courses, facultyData, students }) => {
 
     const filteredStudents = isAttendanceTableVisible
         ? students.filter(s => {
-            const facDeptId = facultyData?.dept?._id || facultyData?.dept;
-            const sDeptId = s.dept?._id || s.dept;
+            // Robust ID Comparison Helper
+            const areIdsEqual = (id1, id2) => {
+                if (!id1 || !id2) return false;
+                const str1 = (id1._id || id1).toString();
+                const str2 = (id2._id || id2).toString();
+                return str1 === str2;
+            };
 
-            // Normalize Batches for comparison
-            // Student Batch could be Object (populated) or String (ID)
-            const sBatchId = s.batch?._id || s.batch;
-            const sBatchName = s.batch?.name; // Might be undefined if not populated
+            const facDept = facultyData?.dept;
+            const sDept = s.dept;
 
-            return sDeptId === facDeptId && targetBatches.some(b => {
-                // b could be an ID string, a Name string (legacy), or an Object
-                const bId = b._id || b;
+            // Robust Batch Comparison
+            const sBatch = s.batch;
+
+            // Match Dept AND (Batch ID match OR Batch Name match)
+            // targetBatches from course might be objects or IDs
+            return areIdsEqual(sDept, facDept) && targetBatches.some(b => {
+                // Check ID equality
+                if (areIdsEqual(b, sBatch)) return true;
+
+                // If not ID match, try Name match (legacy support)
                 const bName = b.name || b;
-
-                // Match by ID OR by Name (if available)
-                return bId === sBatchId || (sBatchName && bName === sBatchName);
+                const sBatchName = sBatch?.name || sBatch;
+                return bName === sBatchName;
             });
         })
         : [];
@@ -133,7 +142,9 @@ const FacultyAttendance = ({ courses, facultyData, students }) => {
 
                         {/* Recalculate batches based on selected course */}
                         {targetBatches.length > 0 && (
-                            <p className="text-xs text-gray-400 mt-1">Batches: {targetBatches.join(', ')}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Batches: {targetBatches.map(b => b.name || b).join(', ')}
+                            </p>
                         )}
                     </div>
 
