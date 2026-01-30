@@ -537,21 +537,60 @@ const AdminDashboard = () => {
           activeSection="course"
           data={courses}
           columns={[
-            { header: 'Code', accessor: 'code' },
-            { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
-            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.map(d => d.name || d).join(', ') : (row.dept?.name || row.dept), className: 'whitespace-normal' },
-            { header: 'Batches', accessor: (row) => Array.isArray(row.batches) ? row.batches.map(b => b.name || b).join(', ') : '-' },
-            { header: 'Credits', accessor: 'credits' }
-          ]}
-          onOpenModal={handleOpenModal}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-        />;
+            columns = {
+              [
+              { header: 'Code', accessor: 'code' },
+              { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
+              {
+                header: 'Dept',
+                accessor: (row) => {
+                  const getDeptName = (d) => {
+                    if (d && d.name) return d.name; // Populated
+                    const found = departments.find(dep => dep._id === d);
+                    return found ? found.name : d; // Lookup or ID
+                  };
+                  return Array.isArray(row.dept) ? row.dept.map(getDeptName).join(', ') : getDeptName(row.dept);
+                },
+                className: 'whitespace-normal'
+              },
+              {
+                header: 'Batches',
+                accessor: (row) => {
+                  const getBatchName = (b) => {
+                    if (b && b.name) return b.name;
+                    const found = batches.find(bat => bat._id === b);
+                    return found ? found.name : b;
+                  };
+                  return Array.isArray(row.batches) ? row.batches.map(getBatchName).join(', ') : '-';
+                }
+              },
+              { header: 'Credits', accessor: 'credits' }
+              ]}
+          onOpenModal = { handleOpenModal }
+          onDelete = { handleDelete }
+          onEdit = { handleEdit }
+            />;
       case 'batch':
         return <AdminManagement
           activeSection="batch"
           data={batches}
-          columns={[{ header: 'Batch Name', accessor: 'name' }, { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : row.dept }]}
+          columns={[
+            { header: 'Batch Name', accessor: 'name' },
+            {
+              header: 'Dept',
+              accessor: (row) => {
+                const getDeptName = (d) => {
+                  // Batch Dept is sometimes just stored as Name string in some versions, or ID?
+                  // Model says: dept: { type: [String], required: true } -> It stores Strings (Names or IDs).
+                  // If it stores names directly, no lookup needed. If IDs, lookup.
+                  // Let's assume potentially ID.
+                  const found = departments.find(dep => dep._id === d);
+                  return found ? found.name : d;
+                };
+                return Array.isArray(row.dept) ? row.dept.map(getDeptName).join(', ') : getDeptName(row.dept);
+              }
+            }
+          ]}
           onOpenModal={handleOpenModal}
           onDelete={handleDelete}
           onEdit={handleEdit}
@@ -563,8 +602,25 @@ const AdminDashboard = () => {
           columns={[
             { header: 'Name', accessor: 'name' },
             { header: 'Reg No', accessor: 'regNo' },
-            { header: 'Dept', accessor: (row) => row.dept?.name || row.dept },
-            { header: 'Batch', accessor: (row) => row.batch?.name || row.batch }
+            {
+              header: 'Dept',
+              accessor: (row) => {
+                // Student Dept is ObjectId or Populated
+                const d = row.dept;
+                if (d && d.name) return d.name;
+                const found = departments.find(dep => dep._id === d);
+                return found ? found.name : d;
+              }
+            },
+            {
+              header: 'Batch',
+              accessor: (row) => {
+                const b = row.batch;
+                if (b && b.name) return b.name;
+                const found = batches.find(bat => bat._id === b);
+                return found ? found.name : b;
+              }
+            }
           ]}
           onOpenModal={handleOpenModal}
           onDelete={handleDelete}
@@ -576,8 +632,27 @@ const AdminDashboard = () => {
           data={faculty}
           columns={[
             { header: 'Name', accessor: 'name' },
-            { header: 'Handling Course', accessor: (row) => Array.isArray(row.course) ? row.course.map(c => c.name || c).join(', ') : (row.course?.name || row.course), className: 'whitespace-normal min-w-[200px]' },
-            { header: 'Dept', accessor: (row) => row.dept?.name || row.dept },
+            {
+              header: 'Handling Course',
+              accessor: (row) => {
+                const getCourseName = (c) => {
+                  if (c && c.name) return c.name;
+                  const found = courses.find(crs => crs._id === c);
+                  return found ? found.name : c;
+                };
+                return Array.isArray(row.course) ? row.course.map(getCourseName).join(', ') : getCourseName(row.course);
+              },
+              className: 'whitespace-normal min-w-[200px]'
+            },
+            {
+              header: 'Dept',
+              accessor: (row) => {
+                const d = row.dept;
+                if (d && d.name) return d.name;
+                const found = departments.find(dep => dep._id === d);
+                return found ? found.name : d;
+              }
+            },
             { header: 'Designation', accessor: 'designation' }
           ]}
           onOpenModal={handleOpenModal}
@@ -591,9 +666,36 @@ const AdminDashboard = () => {
           columns={[
             { header: 'Exam Name', accessor: 'name' },
             { header: 'Date', accessor: 'date' },
-            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : (row.dept?.name || row.dept) },
-            { header: 'Batch', accessor: (row) => row.batch?.name || row.batch },
-            { header: 'Course', accessor: (row) => Array.isArray(row.course) ? row.course.map(c => c.name || c).join(', ') : (row.course?.name || row.course) },
+            {
+              header: 'Dept',
+              accessor: (row) => {
+                const getDeptName = (d) => {
+                  const found = departments.find(dep => dep._id === d);
+                  return found ? found.name : d;
+                };
+                return Array.isArray(row.dept) ? row.dept.map(getDeptName).join(', ') : getDeptName(row.dept);
+              }
+            },
+            {
+              header: 'Batch',
+              accessor: (row) => {
+                const b = row.batch;
+                if (b && b.name) return b.name;
+                const found = batches.find(bat => bat._id === b);
+                return found ? found.name : b;
+              }
+            },
+            {
+              header: 'Course',
+              accessor: (row) => {
+                const getCourseName = (c) => {
+                  if (c && c.name) return c.name;
+                  const found = courses.find(crs => crs._id === c);
+                  return found ? found.name : c;
+                };
+                return Array.isArray(row.course) ? row.course.map(getCourseName).join(', ') : getCourseName(row.course);
+              }
+            },
             { header: 'Marks', accessor: 'marks' }
           ]}
           onOpenModal={handleOpenModal}
