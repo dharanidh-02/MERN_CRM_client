@@ -128,9 +128,25 @@ const AdminAttendance = ({
 
     const filteredStudents = (attendanceForm.course && isAttendanceTableVisible)
         ? students.filter(s => {
-            const sBatchName = s.batch?.name || s.batch;
-            const sDeptName = s.dept?.name || s.dept;
-            return targetBatches.includes(sBatchName) && sDeptName === attendanceForm.dept;
+            // Robust Dept Match: Form uses Name, Student might be Object or ID
+            let sDeptName = s.dept?.name;
+            if (!sDeptName && s.dept) {
+                // If s.dept is ID, find the name from departments list
+                const dObj = departments.find(d => d._id === s.dept);
+                sDeptName = dObj ? dObj.name : s.dept;
+            }
+            const deptMatch = sDeptName === attendanceForm.dept;
+
+            // Robust Batch Match: Compare IDs
+            const sBatchId = s.batch?._id || s.batch;
+
+            // targetBatches comes from selectedCourseObj.batches (Objects or IDs)
+            const batchMatch = targetBatches.some(b => {
+                const bId = b._id || b;
+                return String(bId) === String(sBatchId);
+            });
+
+            return deptMatch && batchMatch;
         })
         : [];
 
@@ -208,7 +224,7 @@ const AdminAttendance = ({
                             ))}
                         </select>
                         {targetBatches.length > 0 && (
-                            <p className="text-xs text-blue-600 mt-1">Includes Batches: {targetBatches.join(', ')}</p>
+                            <p className="text-xs text-blue-600 mt-1">Includes Batches: {targetBatches.map(b => b.name || b).join(', ')}</p>
                         )}
                     </div>
 
