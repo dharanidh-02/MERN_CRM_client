@@ -1,5 +1,6 @@
+// Attendance Page
 import React, { useState, useEffect } from 'react';
-import * as API from '../../api/index';
+import * as API from '../../api';
 
 const MyAttendance = () => {
     const [attendance, setAttendance] = useState([]);

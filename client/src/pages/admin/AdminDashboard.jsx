@@ -4,6 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/admin/DataTable';
 import GenericModal from '../../components/admin/GenericModal';
 import * as API from '../../api';
+import AdminOverview from './AdminOverview';
+import AdminAttendance from './AdminAttendance';
+import AdminManagement from './AdminManagement';
+import AdminEnquiries from './AdminEnquiries';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- UI Components ---
@@ -246,42 +250,30 @@ const AdminDashboard = () => {
       normalizedItem.dept = [normalizedItem.dept];
     }
 
-    // Normalize populated relationships to IDs for the form
+    // Generic Normalization for Arrays of Objects -> Arrays of IDs
+    ['dept', 'batches', 'course'].forEach(field => {
+      if (normalizedItem[field] && Array.isArray(normalizedItem[field])) {
+        normalizedItem[field] = normalizedItem[field].map(subItem => (subItem && subItem._id) ? subItem._id : subItem);
+      }
+    });
+
+    // Normalize populated relationships to IDs for the form (Single Objects)
     if (normalizedItem.dept && typeof normalizedItem.dept === 'object' && normalizedItem.dept._id) {
       normalizedItem.dept = normalizedItem.dept._id;
     }
+
     if (normalizedItem.course) {
       if (type === 'faculty') {
-        // Ensure it's an array for Faculty
-        if (!Array.isArray(normalizedItem.course)) {
-          normalizedItem.course = [normalizedItem.course];
-        }
-        // Map objects to IDs
-        normalizedItem.course = normalizedItem.course.map(c => (c && c._id) ? c._id : c);
+        // Already handled by Generic Normalization above (it's an array)
       } else {
         // For Exam (and others), keep as single value
         // If it's an object (populated), extract ID or Name depending on what Model expects.
-        // ExamModel expects 'String' (Course Name) usually? Or ID?
-        // Looking at ExamModel: course: { type: String, required: true }
-        // Looking at AdminDashboard inputs for Exam: It uses a Select with options=courses.
-        // The Select component uses `value._id` or `value`.
-        // If ExamModel stores Name, we should ensure we extract Name.
-        // Let's assume Exam stores Name as per `ExamModel.js`.
-
         if (typeof normalizedItem.course === 'object' && normalizedItem.course !== null) {
-          // If populated, use Name if Model expects String, or ID if Ref.
-          // ExamModel says Type: String. So likely Name.
-          // But let's check what the Select options provide. 
-          // The Select options use _id as value usually.
-          // Wait, previous data might use Name.
-          // Let's stick to what it was before: just extract _id if it's an object, assuming ref-like behavior or just use it.
-          // Actually, if ExamModel is String, and we pass ID, it saves ID string.
-          // If we pass Name, it saves Name string.
-          // Let's assume we want to flatten it if it's an object.
           normalizedItem.course = normalizedItem.course._id || normalizedItem.course.name || normalizedItem.course;
         }
       }
     }
+
     if (normalizedItem.batch && typeof normalizedItem.batch === 'object' && normalizedItem.batch._id) {
       normalizedItem.batch = normalizedItem.batch._id;
     }
@@ -476,7 +468,13 @@ const AdminDashboard = () => {
 
     // Logic must match the render filter
     const selectedCourseObj = courses.find(c => c.name === attendanceForm.course);
-    const targetBatches = selectedCourseObj ? (selectedCourseObj.batches || []) : [];
+    // Updated: Batches are now populated objects, need to map to names or IDs. 
+    // Students typically store batch IDs or populated batch objects. 
+    // Let's assume student.batch.name is available or student.batch is Name (legacy).
+    // The safest is to compare Names if possible, or IDs.
+    // Course batches: [{_id, name, ...}]
+
+    const targetBatches = selectedCourseObj ? (selectedCourseObj.batches || []).map(b => b.name || b) : [];
 
     // Filter students belonging to ANY of the target batches
     const currentViewStudents = students.filter(s => {
@@ -514,365 +512,95 @@ const AdminDashboard = () => {
     { id: 'enquiries', label: 'Enquiries' },
   ];
 
-  const renderTableSection = (title, type, columns, data) => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-        <button
-          onClick={() => handleOpenModal(type)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm font-medium transition-colors text-sm"
-        >
-          <FaPlus /> Add {type.charAt(0).toUpperCase() + type.slice(1)}
-        </button>
-      </div>
-      <DataTable
-        columns={columns}
-        data={data}
-        onDelete={(idx) => handleDelete(type, idx)}
-        onEdit={(item) => handleEdit(type, item)}
-      />
-    </div>
-  );
-
-  const renderAttendanceSection = () => {
-    if (attendanceStep === 'list') {
-      return (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-900">Attendance Management</h2>
-          </div>
-          <p className="text-gray-500">Select a faculty member to mark attendance for their class.</p>
-          <DataTable
-            columns={[
-              { header: 'Faculty Name', accessor: 'name' },
-              {
-                header: 'Handling Course', accessor: (row) => {
-                  if (Array.isArray(row.course)) return row.course.map(c => c?.name || c).join(', ');
-                  return row.course?.name || (typeof row.course === 'object' ? 'N/A' : row.course) || '-';
-                }
-              },
-              { header: 'Department', accessor: (row) => row.dept?.name || (typeof row.dept === 'object' ? 'N/A' : row.dept) || '-' },
-            ]}
-            data={faculty}
-            onDelete={null}
-            onEdit={(item) => handleSelectFacultyForAttendance(item)}
-          />
-        </div>
-      );
-    } else {
-      // Mark Attendance View (After selecting a Faculty)
-
-      // Cascading Filter Logic (Same as before, but pre-filled/constrained by Faculty if needed)
-      // We allow Admin to override Dept/Course if they want, but it starts with Faculty's defaults.
-
-      const availableCourses = attendanceForm.dept
-        ? courses.filter(c => {
-          // If a faculty is explicitly selected, only show their assigned course
-          if (selectedFaculty && selectedFaculty.course) {
-            if (Array.isArray(selectedFaculty.course)) {
-              // Check if this course (c) is in the faculty's assigned courses
-              return selectedFaculty.course.some(fc => (fc.name === c.name) || (fc === c.name) || (fc._id === c._id));
-            } else {
-              // Fallback for single object/string
-              const facCourseName = selectedFaculty.course.name || selectedFaculty.course;
-              return c.name === facCourseName;
-            }
-          }
-          // Otherwise show all courses in the dept
-          return Array.isArray(c.dept) ? c.dept.includes(attendanceForm.dept) : c.dept === attendanceForm.dept;
-        })
-        : [];
-
-      // Find selected course object to get its batches
-      const selectedCourseObj = courses.find(c => c.name === attendanceForm.course);
-      const targetBatches = selectedCourseObj ? (selectedCourseObj.batches || []) : [];
-
-      // Filter students belonging to ANY of the target batches
-      const filteredStudents = (attendanceForm.course && isAttendanceTableVisible)
-        ? students.filter(s => {
-          const sBatchName = s.batch?.name || s.batch;
-          const sDeptName = s.dept?.name || s.dept;
-          return targetBatches.includes(sBatchName) && sDeptName === attendanceForm.dept;
-        })
-        : [];
-
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setAttendanceStep('list')} className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
-              <FaArrowLeft />
-            </button>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Mark Attendance
-              </h2>
-              <p className="text-sm text-gray-500">
-                Marking for: <span className="font-semibold text-blue-600">{selectedFaculty?.name}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Attendance Controls */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-              {/* Department Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  value={attendanceForm.dept}
-                  onChange={(e) => {
-                    setAttendanceForm(prev => ({ ...prev, dept: e.target.value, course: '' }));
-                    setIsAttendanceTableVisible(false);
-                  }}
-                >
-                  <option value="">-- Select Department --</option>
-                  {departments.map(d => (
-                    <option key={d._id} value={d.name}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Course Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  value={attendanceForm.course}
-                  onChange={(e) => {
-                    setAttendanceForm(prev => ({ ...prev, course: e.target.value }));
-                    setIsAttendanceTableVisible(false);
-                  }}
-                  disabled={!attendanceForm.dept}
-                >
-                  <option value="">-- Select Course --</option>
-                  {availableCourses.map(c => (
-                    <option key={c._id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-                {targetBatches.length > 0 && (
-                  <p className="text-xs text-blue-600 mt-1">Includes Batches: {targetBatches.join(', ')}</p>
-                )}
-              </div>
-
-              {/* Date Selector */}
-              <div>
-                <Input
-                  label="Date"
-                  name="date"
-                  type="date"
-                  value={attendanceForm.date}
-                  onChange={(n, v) => setAttendanceForm(prev => ({ ...prev, [n]: v }))}
-                />
-              </div>
-
-            </div>
-
-            {/* Period Selector (1-7 Checkboxes style) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Periods</label>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5, 6, 7].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      setAttendanceForm(prev => {
-                        const currentPeriods = prev.period || [];
-                        const newPeriods = currentPeriods.includes(p.toString())
-                          ? currentPeriods.filter(pr => pr !== p.toString())
-                          : [...currentPeriods, p.toString()];
-                        return { ...prev, period: newPeriods.sort() };
-                      });
-                    }}
-                    className={`w-10 h-10 rounded-lg font-bold border transition-all ${(attendanceForm.period || []).includes(p.toString())
-                      ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-                      }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Go Button */}
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={handleSearchStudents}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!attendanceForm.dept || !attendanceForm.course || !attendanceForm.date}
-              >
-                Search Students
-              </button>
-            </div>
-          </div>
-
-
-          {/* Student List (Only visible after search) */}
-          {isAttendanceTableVisible && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">Student List</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => markAll('present')} className="text-xs text-green-600 hover:text-green-700 font-medium">Mark All Present</button>
-                  <span className="text-gray-300">|</span>
-                  <button onClick={() => markAll('absent')} className="text-xs text-red-600 hover:text-red-700 font-medium">Mark All Absent</button>
-                </div>
-              </div>
-
-              {filteredStudents.length > 0 ? (
-                <table className="w-full text-left text-sm text-gray-600">
-                  <thead className="bg-gray-50 text-gray-900 font-semibold uppercase text-xs">
-                    <tr>
-                      <th className="px-6 py-3">Register No</th>
-                      <th className="px-6 py-3">Student Name</th>
-                      <th className="px-6 py-3 text-center">Present</th>
-                      <th className="px-6 py-3 text-center">Absent</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredStudents.map(student => (
-                      <tr key={student.regNo} className="hover:bg-gray-50 transition-colors duration-150 group">
-                        <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{student.regNo}</td>
-                        <td className="px-6 py-4 font-medium">{student.name}</td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleAttendanceChange(student.regNo, 'present')}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm mx-auto ${attendanceEntries[student.regNo] === 'present'
-                              ? 'bg-green-500 text-white scale-110 shadow-green-200'
-                              : 'bg-white border-2 border-green-100 text-green-400 hover:border-green-400 hover:bg-green-50'
-                              }`}
-                          >
-                            <FaCheck size={14} className={attendanceEntries[student.regNo] === 'present' ? 'opacity-100' : 'opacity-0 hover:opacity-50'} />
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleAttendanceChange(student.regNo, 'absent')}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm mx-auto ${attendanceEntries[student.regNo] === 'absent'
-                              ? 'bg-red-500 text-white scale-110 shadow-red-200'
-                              : 'bg-white border-2 border-red-100 text-red-400 hover:border-red-400 hover:bg-red-50'
-                              }`}
-                          >
-                            <span className={`font-bold text-sm ${attendanceEntries[student.regNo] === 'absent' ? 'opacity-100' : 'opacity-0 hover:opacity-50'}`}>A</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-8 text-center text-gray-400">
-                  No students found in this course/department.
-                </div>
-              )}
-
-              {filteredStudents.length > 0 && (
-                <div className="p-6 border-t border-gray-100 flex justify-end">
-                  <button
-                    onClick={saveAttendance}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors"
-                  >
-                    <FaCheck /> Confirm & Save
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-  };
-
-  const OverviewSection = () => (
-    <>
-      <div className="mb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1">Welcome Admin, here's the current status.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Total Students', value: students.length, change: 'Live', border: 'border-blue-500', text: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Total Faculty', value: faculty.length, change: 'Live', border: 'border-purple-500', text: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Courses', value: courses.length, change: 'Live', border: 'border-teal-500', text: 'text-teal-600', bg: 'bg-teal-50' },
-          { label: 'Batches', value: batches.length, change: 'Live', border: 'border-orange-500', text: 'text-orange-600', bg: 'bg-orange-50' },
-        ].map((stat, idx) => (
-          <div key={idx} className={`p-6 rounded-2xl bg-white border-2 ${stat.border} shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-300`}>
-            <div className="flex justify-between items-start mb-4">
-              <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
-              <span className={`px-2 py-1 rounded-lg text-xs font-bold ${stat.bg} ${stat.text}`}>{stat.change}</span>
-            </div>
-            <h3 className={`text-3xl font-bold ${stat.text}`}>{stat.value}</h3>
-          </div>
-        ))}
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100"><h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3></div>
-        <div className="p-6 text-center text-gray-400 py-12">No recent activity.</div>
-      </div>
-    </>
-  );
-
   const renderContent = () => {
     switch (activeSection) {
-      case 'overview': return <OverviewSection />;
-      case 'attendance': return renderAttendanceSection();
+      case 'overview': return <AdminOverview students={students} faculty={faculty} courses={courses} departments={departments} />;
+      case 'attendance': return <AdminAttendance
+        faculty={faculty}
+        students={students}
+        courses={courses}
+        departments={departments}
+        showToast={showToast}
+        onAttendanceSave={loadAllData}
+      />;
       case 'department':
-        return renderTableSection('Departments', 'department',
-          [{ header: 'Name', accessor: 'name' }, { header: 'Code', accessor: 'code' }, { header: 'HOD', accessor: 'head' }],
-          departments
-        );
+        return <AdminManagement
+          activeSection="department"
+          data={departments}
+          columns={[{ header: 'Name', accessor: 'name' }, { header: 'Code', accessor: 'code' }, { header: 'HOD', accessor: 'head' }]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'course':
-        return renderTableSection('Courses', 'course',
-          [
+        return <AdminManagement
+          activeSection="course"
+          data={courses}
+          columns={[
             { header: 'Code', accessor: 'code' },
             { header: 'Course Name', accessor: 'name', className: 'whitespace-normal min-w-[300px]' },
-            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : row.dept, className: 'whitespace-normal' },
-            { header: 'Batches', accessor: (row) => Array.isArray(row.batches) ? row.batches.join(', ') : '-' },
+            { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.map(d => d.name || d).join(', ') : (row.dept?.name || row.dept), className: 'whitespace-normal' },
+            { header: 'Batches', accessor: (row) => Array.isArray(row.batches) ? row.batches.map(b => b.name || b).join(', ') : '-' },
             { header: 'Credits', accessor: 'credits' }
-          ],
-          courses
-        );
+          ]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'batch':
-        return renderTableSection('Batches', 'batch',
-          [{ header: 'Batch Name', accessor: 'name' }, { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : row.dept }],
-          batches
-        );
+        return <AdminManagement
+          activeSection="batch"
+          data={batches}
+          columns={[{ header: 'Batch Name', accessor: 'name' }, { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : row.dept }]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'student':
-        return renderTableSection('Students', 'student',
-          [
+        return <AdminManagement
+          activeSection="student"
+          data={students}
+          columns={[
             { header: 'Name', accessor: 'name' },
             { header: 'Reg No', accessor: 'regNo' },
             { header: 'Dept', accessor: (row) => row.dept?.name || row.dept },
             { header: 'Batch', accessor: (row) => row.batch?.name || row.batch }
-          ],
-          students
-        );
+          ]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'faculty':
-        return renderTableSection('Faculty', 'faculty',
-          [
+        return <AdminManagement
+          activeSection="faculty"
+          data={faculty}
+          columns={[
             { header: 'Name', accessor: 'name' },
             { header: 'Handling Course', accessor: (row) => Array.isArray(row.course) ? row.course.map(c => c.name || c).join(', ') : (row.course?.name || row.course), className: 'whitespace-normal min-w-[200px]' },
             { header: 'Dept', accessor: (row) => row.dept?.name || row.dept },
             { header: 'Designation', accessor: 'designation' }
-          ],
-          faculty
-        );
+          ]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
       case 'exam':
-        return renderTableSection('Exams', 'exam',
-          [
+        return <AdminManagement
+          activeSection="exam"
+          data={exams}
+          columns={[
             { header: 'Exam Name', accessor: 'name' },
             { header: 'Date', accessor: 'date' },
             { header: 'Dept', accessor: (row) => Array.isArray(row.dept) ? row.dept.join(', ') : (row.dept?.name || row.dept) },
             { header: 'Batch', accessor: (row) => row.batch?.name || row.batch },
-            { header: 'Course', accessor: (row) => row.course?.name || row.course },
+            { header: 'Course', accessor: (row) => Array.isArray(row.course) ? row.course.map(c => c.name || c).join(', ') : (row.course?.name || row.course) },
             { header: 'Marks', accessor: 'marks' }
-          ],
-          exams
-        );
+          ]}
+          onOpenModal={handleOpenModal}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />;
+      case 'enquiries': return <AdminEnquiries showToast={showToast} confirmAction={(opts) => setConfirmModal({ ...opts, isOpen: true })} />;
       case 'settings':
         return (
           <div className="space-y-6 animate-fade-in-up">
@@ -890,7 +618,6 @@ const AdminDashboard = () => {
                     checked={localStorage.getItem('showGrades') === 'true'}
                     onChange={(e) => {
                       localStorage.setItem('showGrades', e.target.checked);
-                      // Force re-render to reflect change immediately (in a real app, use Context)
                       window.location.reload();
                     }}
                   />
@@ -900,139 +627,16 @@ const AdminDashboard = () => {
             </div>
           </div>
         );
-
-      case 'enquiries':
-        return <EnquiriesSection
-          showToast={showToast}
-          confirmAction={(opts) => setConfirmModal({ ...opts, isOpen: true })}
-        />;
-      default: return <OverviewSection />;
+      default: return <AdminOverview students={students} faculty={faculty} courses={courses} departments={departments} />;
     }
-  };
-
-  const EnquiriesSection = ({ showToast, confirmAction }) => {
-    const [enquiries, setEnquiries] = useState([]);
-
-    // Load from API on mount
-    React.useEffect(() => {
-      loadEnquiries();
-    }, []);
-
-    const loadEnquiries = async () => {
-      try {
-        const res = await API.fetchEnquiries();
-        setEnquiries(res.data);
-      } catch (err) {
-        console.error(err);
-        if (showToast) showToast('Failed to load enquiries', 'error');
-      }
-    }
-
-    const updateStatus = async (id, newStatus) => {
-      try {
-        await API.updateEnquiry(id, { status: newStatus });
-        loadEnquiries();
-        if (showToast) showToast('Status updated', 'success');
-      } catch (err) {
-        console.error(err);
-        if (showToast) showToast('Failed to update status', 'error');
-      }
-    };
-
-    const deleteEnquiry = async (id) => {
-      if (confirmAction) {
-        confirmAction({
-          title: 'Delete Enquiry',
-          message: 'Are you sure you want to delete this enquiry?',
-          onConfirm: async () => {
-            try {
-              await API.deleteEnquiry(id);
-              loadEnquiries();
-              if (showToast) showToast('Enquiry deleted successfully', 'success');
-            } catch (err) {
-              console.error(err);
-              if (showToast) showToast('Failed to delete enquiry', 'error');
-            }
-          }
-        });
-      }
-    };
-
-    return (
-      <div className="space-y-6 animate-fade-in-up">
-        <h2 className="text-2xl font-bold text-gray-900">Admissions Enquiries</h2>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          {enquiries.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <p>No new enquiries found.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
-                <thead className="bg-gray-50 text-gray-900 font-semibold uppercase text-xs">
-                  <tr>
-                    <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Name</th>
-                    <th className="px-6 py-3">Department</th>
-                    <th className="px-6 py-3">Message</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {enquiries.map((enq) => (
-                    <tr key={enq._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">{new Date(enq.date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        {enq.name}
-                        <div className="text-xs text-gray-500 font-normal">{enq.email}</div>
-                      </td>
-                      <td className="px-6 py-4">{enq.department}</td>
-                      <td className="px-6 py-4 relative group cursor-help">
-                        <span className="truncate max-w-xs block">{enq.message || '-'}</span>
-                        {/* Tooltip for full message */}
-                        {enq.message && (
-                          <div className="absolute hidden group-hover:block z-10 bg-black text-white p-2 rounded text-xs w-64 -top-8 left-0 shadow-lg">
-                            {enq.message}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${enq.status === 'New' ? 'bg-blue-100 text-blue-700' :
-                          enq.status === 'Contacted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                          {enq.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right flex justify-end gap-2">
-                        {enq.status === 'New' && (
-                          <button onClick={() => updateStatus(enq._id, 'Contacted')} className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded hover:bg-green-100 border border-green-200">
-                            Mark Contacted
-                          </button>
-                        )}
-                        <button onClick={() => deleteEnquiry(enq._id)} className="text-red-400 hover:text-red-600">
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
-
       {/* Top Navigation Bar */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-
             {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md hover:bg-blue-700 transition-colors cursor-pointer">
@@ -1057,10 +661,10 @@ const AdminDashboard = () => {
                   {item.label}
                 </button>
               ))}
-            </nav>
+            </nav >
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-4">
+            < div className="flex items-center gap-4" >
               <div className="h-8 w-px bg-gray-200 mx-2"></div>
 
               {/* User Profile + Sign Out */}
@@ -1098,19 +702,19 @@ const AdminDashboard = () => {
                   <FaSignOutAlt />
                 </button>
               </div>
-            </div>
+            </div >
 
-          </div>
-        </div>
-      </header>
+          </div >
+        </div >
+      </header >
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      < main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8" >
         {renderContent()}
-      </main>
+      </main >
 
       {/* Shared Modal */}
-      <GenericModal
+      < GenericModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={currentModalType === 'profile' ? 'My Profile' : `${editIndex !== null ? 'Edit' : 'Add New'} ${currentModalType ? currentModalType.charAt(0).toUpperCase() + currentModalType.slice(1) : 'Item'}`}
@@ -1171,14 +775,20 @@ const AdminDashboard = () => {
                   <MultiSelect
                     label="Departments"
                     options={departments.map(d => d.name)}
-                    selected={formData.dept || []}
-                    onChange={(newVal) => handleFormChange('dept', newVal)}
+                    selected={departments.filter(d => (formData.dept || []).includes(d._id)).map(d => d.name)}
+                    onChange={(selectedNames) => {
+                      const selectedIds = departments.filter(d => selectedNames.includes(d.name)).map(d => d._id);
+                      handleFormChange('dept', selectedIds);
+                    }}
                   />
                   <MultiSelect
                     label="Batches"
                     options={batches.map(b => b.name)}
-                    selected={formData.batches || []}
-                    onChange={(newVal) => handleFormChange('batches', newVal)}
+                    selected={batches.filter(b => (formData.batches || []).includes(b._id)).map(b => b.name)}
+                    onChange={(selectedNames) => {
+                      const selectedIds = batches.filter(b => selectedNames.includes(b.name)).map(b => b._id);
+                      handleFormChange('batches', selectedIds);
+                    }}
                   />
                   <Input label="Credits" name="credits" type="number" placeholder="4" value={formData.credits} onChange={handleFormChange} />
                 </>
@@ -1243,8 +853,11 @@ const AdminDashboard = () => {
                   <MultiSelect
                     label="Department"
                     options={departments.map(d => d.name)}
-                    selected={formData.dept || []}
-                    onChange={(newVal) => handleFormChange('dept', newVal)}
+                    selected={departments.filter(d => (formData.dept || []).includes(d._id)).map(d => d.name)}
+                    onChange={(selectedNames) => {
+                      const selectedIds = departments.filter(d => selectedNames.includes(d.name)).map(d => d._id);
+                      handleFormChange('dept', selectedIds);
+                    }}
                   />
                   <Select
                     label="Batch"
@@ -1253,12 +866,14 @@ const AdminDashboard = () => {
                     value={formData.batch}
                     onChange={handleFormChange}
                   />
-                  <Select
-                    label="Course"
-                    name="course"
+                  <MultiSelect
+                    label="Subjects/Courses"
                     options={courses.map(c => c.name)}
-                    value={formData.course}
-                    onChange={handleFormChange}
+                    selected={courses.filter(c => (formData.course || []).includes(c._id)).map(c => c.name)}
+                    onChange={(selectedNames) => {
+                      const selectedIds = courses.filter(c => selectedNames.includes(c.name)).map(c => c._id);
+                      handleFormChange('course', selectedIds);
+                    }}
                   />
 
                   <Input label="Total Marks" name="marks" type="number" placeholder="100" value={formData.marks} onChange={handleFormChange} />
@@ -1291,7 +906,7 @@ const AdminDashboard = () => {
             </div>
           </form>
         )}
-      </GenericModal>
+      </GenericModal >
 
     </div >
   );

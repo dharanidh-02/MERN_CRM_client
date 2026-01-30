@@ -1,6 +1,7 @@
+// Marks Page
 import React, { useState, useEffect } from 'react';
 import { FaTrophy, FaMedal, FaClipboardList, FaLock } from 'react-icons/fa';
-import * as API from '../../api/index';
+import * as API from '../../api';
 
 const MyMarks = () => {
     const [exams, setExams] = useState([]);

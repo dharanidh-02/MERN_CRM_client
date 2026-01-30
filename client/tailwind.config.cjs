@@ -13,10 +13,6 @@ module.exports = {
                 accent: "#06b6d4",     // Cyan 500
                 "glass-border": "rgba(255, 255, 255, 0.08)",
             },
-            animation: {
-                'blob': 'blob 7s infinite',
-                'shimmer': 'shimmer 2s linear infinite',
-            },
             keyframes: {
                 blob: {
                     '0%': { transform: 'translate(0px, 0px) scale(1)' },
@@ -28,6 +24,15 @@ module.exports = {
                     from: { backgroundPosition: '0 0' },
                     to: { backgroundPosition: '-200% 0' },
                 },
+                'fade-in-up': {
+                    '0%': { opacity: '0', transform: 'translateY(10px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+            },
+            animation: {
+                'blob': 'blob 7s infinite',
+                'shimmer': 'shimmer 2s linear infinite',
+                'fade-in-up': 'fade-in-up 0.5s ease-out',
             },
         },
     },

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import * as API from '../../api';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import PremiumButton from '../../components/common/PremiumButton';
@@ -90,12 +90,13 @@ const EnquiryPage = () => {
 
             <main className="flex-grow relative pt-32 pb-20 flex items-center justify-center">
                 {/* Background Animation */}
-                <div className="absolute inset-0 z-0 h-full w-full opacity-60 pointer-events-none fixed">
+                <div className="fixed inset-0 z-0 h-full w-full opacity-60 pointer-events-none">
                     <Silk
-                        color="#3b82f6"
-                        speed={1.0}
-                        scale={6}
-                        noiseIntensity={0.1}
+                        speed={5}
+                        scale={1.2}
+                        color="#4b2cff"
+                        noiseIntensity={1.2}
+                        rotation={-0.6}
                     />
                 </div>
 

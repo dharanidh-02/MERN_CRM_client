@@ -58,7 +58,14 @@ export const updateDepartment = updateOne(DepartmentCollection);
 export const deleteDepartment = deleteOne(DepartmentCollection);
 
 // Courses
-export const getCourses = getAll(CourseCollection);
+export const getCourses = async (req, res) => {
+    try {
+        const data = await CourseCollection.find().populate('dept batches');
+        res.status(200).json(data);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
 export const createCourse = createOne(CourseCollection);
 export const updateCourse = updateOne(CourseCollection);
 export const deleteCourse = deleteOne(CourseCollection);
@@ -123,6 +130,19 @@ export const updateStudent = async (req, res) => {
 };
 
 export const deleteStudent = deleteOne(StudentCollection);
+
+export const getStudentById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const student = await StudentCollection.findById(id).populate('dept batch');
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+        res.status(200).json(student);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
 
 export const getFaculty = async (req, res) => {
     console.error("!!! HIT getFaculty CONTROLLER !!!");

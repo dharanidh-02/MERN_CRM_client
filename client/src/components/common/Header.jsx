@@ -19,14 +19,18 @@ const Header = () => {
 
                 {/* Navigation Links */}
                 <ul className="hidden md:flex gap-x-8 font-medium items-center text-gray-300">
-                    {['Home', 'Enquiry', 'About'].map((item) => (
-                        <li key={item} className="relative group">
-                            <Link to={item === 'Home' ? '/' : `/${item.toLowerCase()}`} className="hover:text-white transition-colors duration-300">
-                                {item}
-                            </Link>
-                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 group-hover:w-full"></span>
-                        </li>
-                    ))}
+                    <li className="relative group">
+                        <Link to="/" className="hover:text-white transition-colors duration-300">Home</Link>
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 group-hover:w-full"></span>
+                    </li>
+                    <li className="relative group">
+                        <a href="/#about" className="hover:text-white transition-colors duration-300">About</a>
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 group-hover:w-full"></span>
+                    </li>
+                    <li className="relative group">
+                        <Link to="/enquiry" className="hover:text-white transition-colors duration-300">Enquiry</Link>
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 group-hover:w-full"></span>
+                    </li>
                 </ul>
 
                 <div className="flex items-center gap-4">

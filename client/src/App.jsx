@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/public/LandingPage';
 import EnquiryPage from './pages/public/EnquiryPage';
 import LoginPage from './pages/public/LoginPage';
+
+import UserDashboard from './pages/user/UserDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import FacultyDashboard from './pages/faculty/FacultyDashboard';
 
@@ -19,6 +21,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/enquiry" element={<EnquiryPage />} />
 
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

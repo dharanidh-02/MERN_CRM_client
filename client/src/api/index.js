@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: 'http://localhost:5000' });
+const API = axios.create({ baseURL: 'https://mern-crm-server.onrender.com' });
+
+// --- Auth ---
+export const registerUser = (userData) => API.post('/auth/register', userData);
+export const loginUser = (credentials) => API.post('/auth/login', credentials);
 
 // --- Departments ---
 export const fetchDepartments = () => API.get('/api/departments');
@@ -22,6 +26,7 @@ export const deleteBatch = (id) => API.delete(`/api/batches/${id}`);
 
 // --- Students ---
 export const fetchStudents = () => API.get('/api/students');
+export const fetchStudent = (id) => API.get(`/api/students/${id}`);
 export const createStudent = (data) => API.post('/api/students', data);
 export const updateStudent = (id, data) => API.put(`/api/students/${id}`, data);
 export const deleteStudent = (id) => API.delete(`/api/students/${id}`);
@@ -39,6 +44,7 @@ export const updateExam = (id, data) => API.put(`/api/exams/${id}`, data);
 export const deleteExam = (id) => API.delete(`/api/exams/${id}`);
 
 // --- Enquiries ---
+export const createEnquiry = (data) => API.post('/enquiry/create', data);
 export const fetchEnquiries = () => API.get('/enquiry/read');
 export const updateEnquiry = (id, data) => API.put(`/enquiry/${id}`, data);
 export const deleteEnquiry = (id) => API.delete(`/enquiry/${id}`);

@@ -5,7 +5,7 @@ const examSchema = mongoose.Schema({
     date: { type: String, required: true },
     dept: { type: [String], required: true }, // Array of Strings for Multi-Dept
     batch: { type: String, required: true },
-    course: { type: String, required: true },
+    course: [{ type: mongoose.Schema.Types.ObjectId, ref: 'courses', required: true }],
     marks: { type: Number, required: true },
     publishGrades: { type: Boolean, default: false }
 });

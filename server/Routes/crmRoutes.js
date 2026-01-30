@@ -3,7 +3,7 @@ import {
     getDepartments, createDepartment, deleteDepartment, updateDepartment,
     getCourses, createCourse, deleteCourse, updateCourse,
     getBatches, createBatch, deleteBatch, updateBatch,
-    getStudents, createStudent, deleteStudent, updateStudent,
+    getStudents, getStudentById, createStudent, deleteStudent, updateStudent,
     getFaculty, createFaculty, deleteFaculty, updateFaculty,
     getExams, createExam, deleteExam, updateExam,
     saveAttendance, getAttendance,
@@ -32,6 +32,7 @@ router.delete('/batches/:id', deleteBatch);
 
 // Students
 router.get('/students', getStudents);
+router.get('/students/:id', getStudentById);
 router.post('/students', createStudent);
 router.put('/students/:id', updateStudent);
 router.delete('/students/:id', deleteStudent);

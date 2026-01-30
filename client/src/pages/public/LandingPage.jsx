@@ -30,9 +30,10 @@ const LandingPage = () => {
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <section className="relative pt-32 pb-40 relative z-10 w-full overflow-hidden">
-                    {/* Silk Animation Background - Increased opacity and removed mix-blend for better visibility on dark */}
+                <section className="relative pt-32 pb-40 z-10 w-full overflow-hidden">
+
                     <div
+                        className="pointer-events-none"
                         style={{
                             position: 'absolute',
                             top: 0,
@@ -85,13 +86,74 @@ const LandingPage = () => {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                            <Link to="/login" className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-100 transition-colors shadow-lg">
-                                Get Started
+
+                            <Link to="/login" className="px-8 py-3 bg-blue-600 text-white font-medium rounded-full border border-blue-600 hover:bg-blue-700 transition-colors">
+                                Login
                             </Link>
                             <Link to="/enquiry" className="px-8 py-3 bg-white/10 text-white font-medium rounded-full border border-white/10 hover:bg-white/20 backdrop-blur-md transition-colors">
                                 Enquiry
                             </Link>
                         </div>
+                    </div>
+                </section>
+
+                {/* About Us Section */}
+                <section id="about" className="py-24 relative z-10 bg-[#020617]/50 backdrop-blur-sm">
+                    <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+                        <motion.div
+                            initial={{ opacity: 0, x: -50 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                        >
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                                Pioneering the <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">Future of Education</span>
+                            </h2>
+                            <p className="text-gray-400 text-lg mb-6 leading-relaxed">
+                                Founded with a vision to eliminate administrative friction, our platform serves as the neural backbone for modern educational institutions. We believe that technology should be invisible—empowering educators and students to focus purely on learning and growth.
+                            </p>
+                            <p className="text-gray-400 text-lg mb-8 leading-relaxed">
+                                From real-time academic tracking to seamless communication channels, we bridge the gap between complex data and intuitive decision-making.
+                            </p>
+                            <div className="flex gap-4">
+                                <div className="flex flex-col">
+                                    <span className="text-3xl font-bold text-white">50+</span>
+                                    <span className="text-sm text-blue-400 uppercase tracking-widest">Institutions</span>
+                                </div>
+                                <div className="w-px bg-gray-700 h-12 self-center mx-4"></div>
+                                <div className="flex flex-col">
+                                    <span className="text-3xl font-bold text-white">10k+</span>
+                                    <span className="text-sm text-blue-400 uppercase tracking-widest">Students</span>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="relative"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-purple-600/20 rounded-2xl blur-2xl -z-10 transform rotate-3"></div>
+                            <div className="bg-[#0f172a] border border-white/10 p-8 rounded-2xl shadow-2xl relative overflow-hidden group hover:border-blue-500/50 transition-colors duration-300">
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <FaRocket size={100} className="text-white" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white mb-4">Our Mission</h3>
+                                <p className="text-gray-400 mb-6">
+                                    To architect a digital ecosystem where administrative efficiency meets academic excellence. We supply the tools; you supply the brilliance.
+                                </p>
+                                <div className="space-y-3">
+                                    {['Zero Latency Operations', 'AI-Driven Insights', 'Bank-Grade Security'].map((item, index) => (
+                                        <div key={index} className="flex items-center gap-3 text-gray-300">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
+                                            {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
                 </section>
 

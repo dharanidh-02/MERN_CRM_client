@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import PillNav from '../../pages/PillNav/PillNav';
 import { FaGraduationCap } from 'react-icons/fa';
